@@ -1,0 +1,3 @@
+### LISTAR veículos
+GET http://localhost:8080/api/veiculos
+Content-Type: application/json
