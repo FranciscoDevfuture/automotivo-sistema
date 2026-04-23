@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema Automotivo</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: Arial, sans-serif;
+            background: #f4f4f4;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 20px;
+        }
+        .card {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .card h2 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 5px;
+        }
+        .form-group {
+            display: inline-block;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+        label {
+            display: block;
+            font-size: 12px;
+            color: #666;
+        }
+        input, select {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            width: 150px;
+        }
+        button {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 5px;
+        }
+        button:hover {
+            background: #2980b9;
+        }
+        .delete-btn {
+            background: #e74c3c;
+        }
+        .delete-btn:hover {
+            background: #c0392b;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background: #2c3e50;
+            color: white;
+        }
+        tr:hover {
+            background: #f5f5f5;
+        }
+        .status-DISPONIVEL { color: green; font-weight: bold; }
+        .status-VENDIDO { color: red; font-weight: bold; }
+        .status-INATIVO { color: gray; font-weight: bold; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>🚗 Sistema Automotivo - Gestão de Estoque</h1>
+
+    <!-- Formulário de Cadastro -->
+    <div class="card">
+        <h2>📝 Cadastrar Novo Veículo</h2>
+        <form id="veiculoForm">
+            <div class="form-group">
+                <label>Placa</label>
+                <input type="text" id="placa" placeholder="ABC-1234" required>
+            </div>
+            <div class="form-group">
+                <label>Modelo ID</label>
+                <input type="number" id="modeloId" placeholder="1" required>
+            </div>
+            <div class="form-group">
+                <label>Ano</label>
+                <input type="number" id="ano" placeholder="2022" required>
+            </div>
+            <div class="form-group">
+                <label>Cor</label>
+                <input type="text" id="cor" placeholder="Preto" required>
+            </div>
+            <div class="form-group">
+                <label>Preço</label>
+                <input type="number" id="preco" placeholder="85000" required>
+            </div>
+            <div class="form-group">
+                <label>Km</label>
+                <input type="number" id="km" placeholder="15000" required>
+            </div>
+            <div class="form-group">
+                <label>Status</label>
+                <select id="status">
+                    <option value="DISPONIVEL">Disponível</option>
+                    <option value="VENDIDO">Vendido</option>
+                    <option value="INATIVO">Inativo</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <button type="submit">➕ Cadastrar</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Filtros -->
+    <div class="card">
+        <h2>🔍 Filtros</h2>
+        <div class="form-group">
+            <label>Preço Min</label>
+            <input type="number" id="filtroPrecoMin" placeholder="0">
+        </div>
+        <div class="form-group">
+            <label>Preço Max</label>
+            <input type="number" id="filtroPrecoMax" placeholder="999999">
+        </div>
+        <div class="form-group">
+            <label>Status</label>
+            <select id="filtroStatus">
+                <option value="">Todos</option>
+                <option value="DISPONIVEL">Disponível</option>
+                <option value="VENDIDO">Vendido</option>
+                <option value="INATIVO">Inativo</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Ano</label>
+            <input type="number" id="filtroAno" placeholder="2022">
+        </div>
+        <div class="form-group">
+            <button onclick="carregarVeiculos()">🔎 Filtrar</button>
+            <button onclick="limparFiltros()">🗑️ Limpar</button>
+        </div>
+    </div>
+
+    <!-- Lista de Veículos -->
+    <div class="card">
+        <h2>📋 Lista de Veículos</h2>
+        <table id="tabelaVeiculos">
+            <thead>
+            <tr><th>ID</th><th>Placa</th><th>Modelo</th><th>Ano</th><th>Cor</th><th>Preço</th><th>Km</th><th>Status</th><th>Ações</th></tr>
+            </thead>
+            <tbody id="listaVeiculos">
+            <tr><td colspan="9">Carregando...</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    const API_URL = "http://localhost:8081/api/veiculos";
+
+    async function carregarVeiculos() {
+        let url = API_URL;
+        const params = new URLSearchParams();
+
+        const precoMin = document.getElementById('filtroPrecoMin').value;
+        const precoMax = document.getElementById('filtroPrecoMax').value;
+        const status = document.getElementById('filtroStatus').value;
+        const ano = document.getElementById('filtroAno').value;
+
+        if (precoMin) params.append('precoMin', precoMin);
+        if (precoMax) params.append('precoMax', precoMax);
+        if (status) params.append('status', status);
+        if (ano) params.append('ano', ano);
+
+        if (params.toString()) {
+            url = API_URL + "/filtros?" + params.toString();
+        }
+
+        try {
+            const response = await fetch(url);
+            const veiculos = await response.json();
+            mostrarVeiculos(veiculos);
+        } catch (error) {
+            console.error("Erro:", error);
+            document.getElementById('listaVeiculos').innerHTML = '<tr><td colspan="9">Erro ao carregar veículos</td></tr>';
+        }
+    }
+
+    function mostrarVeiculos(veiculos) {
+        const tbody = document.getElementById('listaVeiculos');
+        if (veiculos.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="9">Nenhum veículo encontrado</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = veiculos.map(v => `
+            <tr>
+                <td>${v.id}</td>
+                <td>${v.placa}</td>
+                <td>${v.modelo?.nome || '-'}</td>
+                <td>${v.anoFabricacao}</td>
+                <td>${v.cor}</td>
+                <td>R$ ${v.preco.toLocaleString()}</td>
+                <td>${v.quilometragem}</td>
+                <td class="status-${v.status}">${v.status}</td>
+                <td><button onclick="excluirVeiculo(${v.id})" class="delete-btn">🗑️ Excluir</button></td>
+            </tr>
+        `).join('');
+    }
+
+    document.getElementById('veiculoForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const veiculo = {
+            placa: document.getElementById('placa').value,
+            modelo: { id: parseInt(document.getElementById('modeloId').value) },
+            anoFabricacao: parseInt(document.getElementById('ano').value),
+            cor: document.getElementById('cor').value,
+            preco: parseFloat(document.getElementById('preco').value),
+            quilometragem: parseInt(document.getElementById('km').value),
+            status: document.getElementById('status').value
+        };
+
+        try {
+            const response = await fetch(API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(veiculo)
+            });
+
+            if (response.ok) {
+                alert('Veículo cadastrado com sucesso!');
+                document.getElementById('veiculoForm').reset();
+                carregarVeiculos();
+            } else {
+                alert('Erro ao cadastrar veículo');
+            }
+        } catch (error) {
+            alert('Erro ao cadastrar: ' + error);
+        }
+    });
+
+    async function excluirVeiculo(id) {
+        if (confirm('Tem certeza que deseja excluir este veículo?')) {
+            try {
+                await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
+                alert('Veículo removido!');
+                carregarVeiculos();
+            } catch (error) {
+                alert('Erro ao excluir');
+            }
+        }
+    }
+
+    function limparFiltros() {
+        document.getElementById('filtroPrecoMin').value = '';
+        document.getElementById('filtroPrecoMax').value = '';
+        document.getElementById('filtroStatus').value = '';
+        document.getElementById('filtroAno').value = '';
+        carregarVeiculos();
+    }
+
+    // Carregar os veículos ao iniciar
+    carregarVeiculos();
+</script>
+</body>
+</html>
