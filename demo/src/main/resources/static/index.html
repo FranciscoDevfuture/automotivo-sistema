@@ -12,7 +12,7 @@
             padding: 20px;
         }
         .container {
-            max-width: 1200px;
+            max-width: 1400px;
             margin: 0 auto;
         }
         h1 {
@@ -67,6 +67,12 @@
         .delete-btn:hover {
             background: #c0392b;
         }
+        .vender-btn {
+            background: #27ae60;
+        }
+        .vender-btn:hover {
+            background: #219a52;
+        }
         table {
             width: 100%;
             border-collapse: collapse;
@@ -86,6 +92,35 @@
         .status-DISPONIVEL { color: green; font-weight: bold; }
         .status-VENDIDO { color: red; font-weight: bold; }
         .status-INATIVO { color: gray; font-weight: bold; }
+        .contadores {
+            margin-top: 15px;
+            padding: 10px;
+            background: #ecf0f1;
+            border-radius: 5px;
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        .contador-item {
+            font-size: 14px;
+        }
+        .contador-numero {
+            font-size: 20px;
+            font-weight: bold;
+            margin-left: 5px;
+        }
+        .btn-rapido {
+            background: #2c3e50;
+        }
+        .btn-disponivel {
+            background: #27ae60;
+        }
+        .btn-vendido {
+            background: #e74c3c;
+        }
+        .btn-inativo {
+            background: #95a5a6;
+        }
     </style>
 </head>
 <body>
@@ -164,15 +199,34 @@
         </div>
     </div>
 
+    <!-- Botões Rápidos -->
+    <div class="card">
+        <h2>⚡ Ações Rápidas</h2>
+        <div class="form-group">
+            <button onclick="mostrarTodos()" class="btn-rapido">📋 Mostrar Todos</button>
+            <button onclick="mostrarDisponiveis()" class="btn-disponivel">✅ Disponíveis</button>
+            <button onclick="mostrarVendidos()" class="btn-vendido">💰 Vendidos</button>
+            <button onclick="mostrarInativos()" class="btn-inativo">⚫ Inativos</button>
+        </div>
+
+        <!-- Contadores -->
+        <div class="contadores">
+            <div class="contador-item">🚗 Total: <span id="totalVeiculos" class="contador-numero">0</span></div>
+            <div class="contador-item" style="color: green;">✅ Disponíveis: <span id="totalDisponiveis" class="contador-numero">0</span></div>
+            <div class="contador-item" style="color: red;">💰 Vendidos: <span id="totalVendidos" class="contador-numero">0</span></div>
+            <div class="contador-item" style="color: gray;">⚫ Inativos: <span id="totalInativos" class="contador-numero">0</span></div>
+        </div>
+    </div>
+
     <!-- Lista de Veículos -->
     <div class="card">
         <h2>📋 Lista de Veículos</h2>
         <table id="tabelaVeiculos">
             <thead>
-            <tr><th>ID</th><th>Placa</th><th>Modelo</th><th>Ano</th><th>Cor</th><th>Preço</th><th>Km</th><th>Status</th><th>Ações</th></tr>
+            <tr><th>ID</th><th>Placa</th><th>Modelo</th><th>Marca</th><th>Ano</th><th>Cor</th><th>Preço</th><th>Km</th><th>Status</th><th>Ações</th></tr>
             </thead>
             <tbody id="listaVeiculos">
-            <tr><td colspan="9">Carregando...</td></tr>
+            <tr><td colspan="10">Carregando...</td></tr>
             </tbody>
         </table>
     </div>
@@ -181,6 +235,7 @@
 <script>
     const API_URL = "http://localhost:8081/api/veiculos";
 
+    // Carregar veículos com filtros
     async function carregarVeiculos() {
         let url = API_URL;
         const params = new URLSearchParams();
@@ -203,16 +258,18 @@
             const response = await fetch(url);
             const veiculos = await response.json();
             mostrarVeiculos(veiculos);
+            atualizarContadores();
         } catch (error) {
             console.error("Erro:", error);
-            document.getElementById('listaVeiculos').innerHTML = '<tr><td colspan="9">Erro ao carregar veículos</td></tr>';
+            document.getElementById('listaVeiculos').innerHTML = '<tr><td colspan="10">Erro ao carregar veículos</td></tr>';
         }
     }
 
+    // Mostrar veículos na tabela
     function mostrarVeiculos(veiculos) {
         const tbody = document.getElementById('listaVeiculos');
         if (veiculos.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="9">Nenhum veículo encontrado</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="10">Nenhum veículo encontrado</td></tr>';
             return;
         }
 
@@ -221,21 +278,62 @@
                 <td>${v.id}</td>
                 <td>${v.placa}</td>
                 <td>${v.modelo?.nome || '-'}</td>
+                <td>${v.modelo?.marca?.nome || '-'}</td>
                 <td>${v.anoFabricacao}</td>
                 <td>${v.cor}</td>
                 <td>R$ ${v.preco.toLocaleString()}</td>
                 <td>${v.quilometragem}</td>
-                <td class="status-${v.status}">${v.status}</td>
-                <td><button onclick="excluirVeiculo(${v.id})" class="delete-btn">🗑️ Excluir</button></td>
+                <td class="status-${v.status}">${v.status === 'DISPONIVEL' ? '✅ Disponível' : (v.status === 'VENDIDO' ? '💰 Vendido' : '⚫ Inativo')}</td>
+                <td>
+                    ${v.status === 'DISPONIVEL' ? `<button onclick="marcarComoVendido(${v.id})" class="vender-btn" style="background:#27ae60;">💰 Vender</button>` : ''}
+                    <button onclick="excluirVeiculo(${v.id})" class="delete-btn">🗑️ Excluir</button>
+                </td>
             </tr>
         `).join('');
     }
 
+    // Marcar veículo como VENDIDO
+    async function marcarComoVendido(id) {
+        if (confirm('Confirmar venda deste veículo? O status será alterado para VENDIDO.')) {
+            try {
+                const response = await fetch(`${API_URL}/${id}`);
+                const veiculo = await response.json();
+
+                veiculo.status = 'VENDIDO';
+
+                await fetch(`${API_URL}/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(veiculo)
+                });
+
+                alert('✅ Veículo marcado como VENDIDO!');
+                carregarVeiculos();
+            } catch (error) {
+                alert('❌ Erro ao marcar como vendido');
+            }
+        }
+    }
+
+    // Excluir veículo
+    async function excluirVeiculo(id) {
+        if (confirm('⚠️ Tem certeza que deseja excluir este veículo? Esta ação não pode ser desfeita.')) {
+            try {
+                await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
+                alert('🗑️ Veículo removido!');
+                carregarVeiculos();
+            } catch (error) {
+                alert('❌ Erro ao excluir');
+            }
+        }
+    }
+
+    // Cadastrar veículo
     document.getElementById('veiculoForm').addEventListener('submit', async (e) => {
         e.preventDefault();
 
         const veiculo = {
-            placa: document.getElementById('placa').value,
+            placa: document.getElementById('placa').value.toUpperCase(),
             modelo: { id: parseInt(document.getElementById('modeloId').value) },
             anoFabricacao: parseInt(document.getElementById('ano').value),
             cor: document.getElementById('cor').value,
@@ -252,27 +350,49 @@
             });
 
             if (response.ok) {
-                alert('Veículo cadastrado com sucesso!');
+                alert('✅ Veículo cadastrado com sucesso!');
                 document.getElementById('veiculoForm').reset();
                 carregarVeiculos();
             } else {
-                alert('Erro ao cadastrar veículo');
+                const error = await response.text();
+                alert('❌ Erro ao cadastrar veículo: ' + error);
             }
         } catch (error) {
-            alert('Erro ao cadastrar: ' + error);
+            alert('❌ Erro ao cadastrar: ' + error);
         }
     });
 
-    async function excluirVeiculo(id) {
-        if (confirm('Tem certeza que deseja excluir este veículo?')) {
-            try {
-                await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
-                alert('Veículo removido!');
-                carregarVeiculos();
-            } catch (error) {
-                alert('Erro ao excluir');
-            }
-        }
+    // Ações Rápidas
+    function mostrarTodos() {
+        document.getElementById('filtroPrecoMin').value = '';
+        document.getElementById('filtroPrecoMax').value = '';
+        document.getElementById('filtroStatus').value = '';
+        document.getElementById('filtroAno').value = '';
+        carregarVeiculos();
+    }
+
+    function mostrarDisponiveis() {
+        document.getElementById('filtroStatus').value = 'DISPONIVEL';
+        document.getElementById('filtroPrecoMin').value = '';
+        document.getElementById('filtroPrecoMax').value = '';
+        document.getElementById('filtroAno').value = '';
+        carregarVeiculos();
+    }
+
+    function mostrarVendidos() {
+        document.getElementById('filtroStatus').value = 'VENDIDO';
+        document.getElementById('filtroPrecoMin').value = '';
+        document.getElementById('filtroPrecoMax').value = '';
+        document.getElementById('filtroAno').value = '';
+        carregarVeiculos();
+    }
+
+    function mostrarInativos() {
+        document.getElementById('filtroStatus').value = 'INATIVO';
+        document.getElementById('filtroPrecoMin').value = '';
+        document.getElementById('filtroPrecoMax').value = '';
+        document.getElementById('filtroAno').value = '';
+        carregarVeiculos();
     }
 
     function limparFiltros() {
@@ -283,7 +403,27 @@
         carregarVeiculos();
     }
 
-    // Carregar os veículos ao iniciar
+    // Atualizar contadores
+    async function atualizarContadores() {
+        try {
+            const response = await fetch(API_URL);
+            const veiculos = await response.json();
+
+            const total = veiculos.length;
+            const disponiveis = veiculos.filter(v => v.status === 'DISPONIVEL').length;
+            const vendidos = veiculos.filter(v => v.status === 'VENDIDO').length;
+            const inativos = veiculos.filter(v => v.status === 'INATIVO').length;
+
+            document.getElementById('totalVeiculos').innerText = total;
+            document.getElementById('totalDisponiveis').innerText = disponiveis;
+            document.getElementById('totalVendidos').innerText = vendidos;
+            document.getElementById('totalInativos').innerText = inativos;
+        } catch (error) {
+            console.error('Erro ao atualizar contadores');
+        }
+    }
+
+    // Carregar ao iniciar
     carregarVeiculos();
 </script>
 </body>
